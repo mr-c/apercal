@@ -63,14 +63,11 @@ def get_alta_dir(date, task_id, beam_nr, alta_exception):
         '/altaZone/archive/apertif_main/visibilities_default/181205005/WSRTA181205005_B035.MS'
     """
     if int(date) < 180216:
-        return "/altaZone/home/apertif_main/wcudata/WSRTA{date}{task_id:02d}/WSRTA{date}{task_id:02d}_B{beam_nr:03d}.MS".format(
-            **locals())
+        return "/altaZone/home/apertif_main/wcudata/WSRTA{date}{task_id:02d}/WSRTA{date}{task_id:02d}_B{beam_nr:03d}.MS".format(**locals())
     elif int(date) < 181003 or alta_exception:
-        return "/altaZone/home/apertif_main/wcudata/WSRTA{date}{task_id:03d}/WSRTA{date}{task_id:03d}_B{beam_nr:03d}.MS".format(
-            **locals())
+        return "/altaZone/home/apertif_main/wcudata/WSRTA{date}{task_id:03d}/WSRTA{date}{task_id:03d}_B{beam_nr:03d}.MS".format(**locals())
     else:
-        return "/altaZone/archive/apertif_main/visibilities_default/{date}{task_id:03d}/WSRTA{date}{task_id:03d}_B{beam_nr:03d}.MS".format(
-            **locals())
+        return "/altaZone/archive/apertif_main/visibilities_default/{date}{task_id:03d}/WSRTA{date}{task_id:03d}_B{beam_nr:03d}.MS".format(**locals())
 
 
 def getdata_alta(date, task_ids, beams, targetdir=".", tmpdir=".", alta_exception=False):
@@ -105,21 +102,19 @@ def getdata_alta(date, task_ids, beams, targetdir=".", tmpdir=".", alta_exceptio
     if targetdir[-1] != "/":
         targetdir += "/"
 
-    logger.info('Start getting data from ALTA ##########')
-    logging.info('Beams: %s' % beams)
+    logger.debug('Start getting data from ALTA')
+    logging.debug('Beams: %s' % beams)
 
     for beam_nr in beams:
 
-        logger.info('Processing beam %.3d... ######' % beam_nr)
+        logger.debug('Processing beam %.3d' % beam_nr)
 
         for task_id in task_ids:
-            logger.info('Processing task ID %.3d...' % task_id)
+            logger.debug('Processing task ID %.3d' % task_id)
 
             alta_dir = get_alta_dir(date, task_id, beam_nr, alta_exception)
-            cmd = "iget -rfPIT -X {tmpdir}WSRTA{date}{task_id:03d}_B{beam_nr:03d}-icat.irods-status --lfrestart " \
-                  "{tmpdir}WSRTA{date}{task_id:03d}_B{beam_nr:03d}-icat.lf-irods-status --retries 5 {alta_dir} " \
-                  "{targetdir}".format(**locals())
-            logger.info(cmd)
+            cmd = "iget -rfPIT -X {tmpdir}WSRTA{date}{task_id:03d}_B{beam_nr:03d}-icat.irods-status --lfrestart {tmpdir}WSRTA{date}{task_id:03d}_B{beam_nr:03d}-icat.lf-irods-status --retries 5 {alta_dir} {targetdir}".format(**locals())
+            logger.debug(cmd)
             os.system(cmd)
 
     os.system('rm -rf {tmpdir}*irods-status'.format(**locals()))
@@ -127,16 +122,14 @@ def getdata_alta(date, task_ids, beams, targetdir=".", tmpdir=".", alta_exceptio
     # Add verification at the end of the transfer
     for beam_nr in beams:
 
-        logger.info('Verifying beam %.3d... ######' % beam_nr)
+        logger.debug('Verifying beam %.3d' % beam_nr)
 
         for task_id in task_ids:
-            logger.info('Verifying task ID %.3d...' % task_id)
+            logger.debug('Verifying task ID %.3d' % task_id)
 
             # Toggle for when we started using more digits:
             alta_dir = get_alta_dir(date, task_id, beam_nr, alta_exception)
-            cmd = "irsync -srl i:{alta_dir} {targetdir}WSRTA{date}{task_id:03d}_B{beam_nr:03d}.MS >> " \
-                  "{tmpdir}transfer_WSRTA{date}{task_id:03d}_to_alta_verify.log 2>&1".format(
-                **locals())
+            cmd = "irsync -srl i:{alta_dir} {targetdir}WSRTA{date}{task_id:03d}_B{beam_nr:03d}.MS >> {tmpdir}transfer_WSRTA{date}{task_id:03d}_to_alta_verify.log 2>&1".format(**locals())
 
             os.system(cmd)
 
@@ -147,7 +140,7 @@ def getdata_alta(date, task_ids, beams, targetdir=".", tmpdir=".", alta_exceptio
     # Check for failed files
     for task_id in task_ids:
         break  # Hack TJD: disable checking failed files
-        logger.info('Checking failed files for task ID %.3d...' % task_id)
+        logger.debug('Checking failed files for task ID %.3d' % task_id)
 
         cmd = os.popen('cat {tmpdir}transfer_WSRTA{date}{task_id:03d}_to_alta_verify.log | wc -l'.format(**locals()))
         for x in cmd:
@@ -155,12 +148,9 @@ def getdata_alta(date, task_ids, beams, targetdir=".", tmpdir=".", alta_exceptio
             failed_files = x.strip()
 
         if failed_files == '0':
-            cmd = """curl -X POST --data-urlencode 'payload={"text":"Transfer of WSRTA%s%.3d (B%.3d-B%.3d) from 
-            ALTA to %s finished."}' https://hooks.slack.com/services/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""" % (
-            date, task_id, beams[0], beams[-1], hostname)
+            cmd = """curl -X POST --data-urlencode 'payload={"text":"Transfer of WSRTA%s%.3d (B%.3d-B%.3d) from ALTA to %s finished."}' https://hooks.slack.com/services/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""" % (date, task_id, beams[0], beams[-1], hostname)
         else:
-            cmd = """curl -X POST --data-urlencode 'payload={"text":"Transfer of WSRTA%s%.3d (B%.3d-B%.3d) from ALTA to %s finished incomplete. Check logs!"}' https://hooks.slack.com/services/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""" % (
-            date, task_id, beams[0], beams[-1], hostname)
+            cmd = """curl -X POST --data-urlencode 'payload={"text":"Transfer of WSRTA%s%.3d (B%.3d-B%.3d) from ALTA to %s finished incomplete. Check logs!"}' https://hooks.slack.com/services/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""" % (date, task_id, beams[0], beams[-1], hostname)
 
         # Execute the command
         os.system(cmd)
@@ -170,8 +160,8 @@ def getdata_alta(date, task_ids, beams, targetdir=".", tmpdir=".", alta_exceptio
 
     # Print the results
     diff = (end - start) / 60.  # in min
-    logger.info("Total time to transfer data: %.2f min" % diff)
-    logger.info("Done getting data from ALTA ")
+    logger.debug("Total time to transfer data: %.2f min" % diff)
+    logger.debug("Done getting data from ALTA")
 
 
 if __name__ == "__main__":
